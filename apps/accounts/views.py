@@ -12,7 +12,8 @@ from .models import User
 
 
 class UserRegsiterView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
 
     def post(self, request: Request) -> Response:
         serializer = UserRegisterSerializer(data=request.data)

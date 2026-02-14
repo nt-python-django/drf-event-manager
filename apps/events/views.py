@@ -12,14 +12,18 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from django_filters import rest_framework as filters
 from .filters import EventFilter
 import requests
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
+from rest_framework.pagination import LimitOffsetPagination, PageNumberPagination
 
 from .serializers import EventDetailSerializer, EventRegistrationSerailizer
 from .models import Event, Registration
+from ..accounts.permissions import IsTelegramUser
+from ..accounts.throttlings import BurstRateThrottle, SustainedRateThrottle, CustomAnonRateThrottle
 
 
 class EventCreateView(APIView):
     authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsTelegramUser]
 
     def post(self, request: Request, *args, **kwargs):
         serializer = EventDetailSerializer(data=request.data)
@@ -45,17 +49,23 @@ class EventListView(ListAPIView):
     queryset = Event.objects.all()
     serializer_class = EventDetailSerializer
     filter_backends = (filters.DjangoFilterBackend, )
-    filterset_class = EventFilter
+    # filterset_fields = ['title', 'start_date']
+    search_fields = ['title', 'start_date', 'user__username']
+    # filterset_class = EventFilter
+    # throttle_classes = [AnonRateThrottle]
+    pagination_class = PageNumberPagination
 
 
 class EventRetrieveView(RetrieveUpdateDestroyAPIView):
     queryset = Event.objects.all()
     serializer_class = EventDetailSerializer
+    throttle_classes = [BurstRateThrottle, CustomAnonRateThrottle]
 
 
 class EventRegistrationView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
 
     def post(self, request: Request):
         serailizer = EventRegistrationSerailizer(data=request.data)
